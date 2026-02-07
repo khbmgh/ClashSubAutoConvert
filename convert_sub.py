@@ -1,8 +1,9 @@
 import requests
 import base64
+import yaml
 
-# لینک‌های ساب سورس تو
-sources = [
+# لینک‌های ساب شما
+urls = [
     "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/speed_passed.txt",
     "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/ping_passed.txt",
     "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/all/mixed.txt",
@@ -10,22 +11,40 @@ sources = [
     "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/xsfilternet/mixed_base64.txt"
 ]
 
-final_content = ""
+all_subs = []
 
-for url in sources:
+for url in urls:
     r = requests.get(url)
     if r.status_code == 200:
-        data = r.text.strip()
-        # اگر Base64 بود کانورت کن
-        if "base64" in url:
+        text = r.text.strip()
+        if "base64" in url:  # اگر Base64 بود، decode کن
             try:
-                data = base64.b64decode(data).decode()
-            except:
-                pass
-        final_content += data + "\n"
+                text = base64.b64decode(text).decode("utf-8")
+            except Exception as e:
+                print(f"Base64 decode error for {url}: {e}")
+        lines = text.splitlines()
+        all_subs.extend(lines)
     else:
-        print(f"Failed to fetch: {url}")
+        print(f"Failed to fetch {url}, status {r.status_code}")
 
-# فایل خروجی برای Clash
+# حذف تکراری‌ها
+all_subs = list(dict.fromkeys(all_subs))
+
+# ساختار خروجی Clash
+clash_yaml = {
+    "proxies": all_subs,
+    "proxy-groups": [
+        {
+            "name": "Auto",
+            "type": "select",
+            "proxies": all_subs
+        }
+    ],
+    "rules": ["MATCH,Auto"]
+}
+
+# ذخیره به فایل
 with open("clash_sub.yaml", "w", encoding="utf-8") as f:
-    f.write(final_content)
+    yaml.dump(clash_yaml, f, allow_unicode=True)
+
+print("✅ Clash sub updated successfully!")
