@@ -1,0 +1,31 @@
+name: Auto Convert Clash Sub
+on:
+  schedule:
+    - cron: '0 */8 * * *' # هر 8 ساعت اجرا میشه
+  workflow_dispatch: # می‌تونی دستی هم اجراش کنی
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install Requests
+      run: pip install requests
+
+    - name: Run Convert Script
+      run: python convert_sub.py
+
+    - name: Commit and Push clash_sub.yaml
+      run: |
+        git config --local user.name "github-actions"
+        git config --local user.email "github-actions@github.com"
+        git add clash_sub.yaml
+        git commit -m "Auto update clash sub" || echo "No changes to commit"
+        git push
