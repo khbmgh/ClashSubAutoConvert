@@ -44,7 +44,7 @@ clash_yaml = {
 }
 
 # ذخیره به فایل
-with open("clash_sub.yaml", "w", encoding="utf-8") as f:
+with open("subs_converted.yaml", "w", encoding="utf-8") as f:
     yaml.dump(clash_yaml, f, allow_unicode=True)
 
 print("✅ Clash sub updated successfully!")
