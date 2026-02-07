@@ -1,85 +1,38 @@
-name: Auto Convert Clash Subs
+name: Clash Sub Auto Convert
 
 on:
   schedule:
-    - cron: "0 */8 * * *"  # هر 8 ساعت یکبار
-  workflow_dispatch:  # امکان اجرای دستی
+    - cron: '0 */8 * * *'  # هر 8 ساعت یک بار
+  workflow_dispatch:        # اجازه اجرای دستی
 
 jobs:
   convert:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml requests
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml requests
 
-      - name: Run conversion script
-        run: |
-          python - <<'EOF'
-          import requests
-          import base64
-          import yaml
+    - name: Run conversion script
+      run: |
+        python convert_sub.py
 
-          urls = [
-              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/speed_passed.txt",
-              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/ping_passed.txt",
-              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/all/mixed.txt",
-              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/AR14N24B/mixed_base64.txt",
-              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/xsfilternet/mixed_base64.txt"
-          ]
-
-          all_subs = []
-
-          for url in urls:
-              r = requests.get(url)
-              if r.status_code == 200:
-                  text = r.text.strip()
-                  if "base64" in url:
-                      try:
-                          text = base64.b64decode(text).decode("utf-8")
-                      except Exception as e:
-                          print(f"Base64 decode error for {url}: {e}")
-                  lines = text.splitlines()
-                  all_subs.extend(lines)
-              else:
-                  print(f"Failed to fetch {url}, status {r.status_code}")
-
-          all_subs = list(dict.fromkeys(all_subs))
-
-          clash_yaml = {
-              "proxies": all_subs,
-              "proxy-groups": [
-                  {
-                      "name": "Auto",
-                      "type": "select",
-                      "proxies": all_subs
-                  }
-              ],
-              "rules": ["MATCH,Auto"]
-          }
-
-          with open("subs_converted.yaml", "w", encoding="utf-8") as f:
-              yaml.dump(clash_yaml, f, allow_unicode=True)
-
-          print("✅ Clash sub updated successfully!")
-          EOF
-
-      - name: Commit and push converted file
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add subs_converted.yaml
-          git commit -m "Update converted subscription" || echo "No changes to commit"
-          git push https://x-access-token:${PAT_TOKEN}@github.com/khbmgh/ClashSubAutoConvert.git HEAD:main
+    - name: Commit and push converted file
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git add subs_converted.yaml
+        git commit -m "Update converted subscription" || echo "No changes to commit"
+        git push https://x-access-token:${PAT_TOKEN}@github.com/khbmgh/ClashSubAutoConvert.git HEAD:main
