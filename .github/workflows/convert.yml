@@ -1,9 +1,9 @@
-name: Convert Clash Subscriptions
+name: Auto Convert Clash Subs
 
 on:
   schedule:
-    - cron: '0 */8 * * *'  # هر 8 ساعت اجرا می‌شود
-  workflow_dispatch:  # می‌توان دستی هم اجرا کرد
+    - cron: "0 */8 * * *"  # هر 8 ساعت یکبار
+  workflow_dispatch:  # امکان اجرای دستی
 
 jobs:
   convert:
@@ -24,11 +24,59 @@ jobs:
           pip install pyyaml requests
 
       - name: Run conversion script
-        run: python convert_sub.py
+        run: |
+          python - <<'EOF'
+          import requests
+          import base64
+          import yaml
+
+          urls = [
+              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/speed_passed.txt",
+              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/ping_passed.txt",
+              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/all/mixed.txt",
+              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/AR14N24B/mixed_base64.txt",
+              "https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/xsfilternet/mixed_base64.txt"
+          ]
+
+          all_subs = []
+
+          for url in urls:
+              r = requests.get(url)
+              if r.status_code == 200:
+                  text = r.text.strip()
+                  if "base64" in url:
+                      try:
+                          text = base64.b64decode(text).decode("utf-8")
+                      except Exception as e:
+                          print(f"Base64 decode error for {url}: {e}")
+                  lines = text.splitlines()
+                  all_subs.extend(lines)
+              else:
+                  print(f"Failed to fetch {url}, status {r.status_code}")
+
+          all_subs = list(dict.fromkeys(all_subs))
+
+          clash_yaml = {
+              "proxies": all_subs,
+              "proxy-groups": [
+                  {
+                      "name": "Auto",
+                      "type": "select",
+                      "proxies": all_subs
+                  }
+              ],
+              "rules": ["MATCH,Auto"]
+          }
+
+          with open("subs_converted.yaml", "w", encoding="utf-8") as f:
+              yaml.dump(clash_yaml, f, allow_unicode=True)
+
+          print("✅ Clash sub updated successfully!")
+          EOF
 
       - name: Commit and push converted file
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}  # Secret که ساختی
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
