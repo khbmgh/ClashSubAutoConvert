@@ -1,31 +1,72 @@
-name: Auto Convert Clash Sub
+name: Auto Convert Clash Subs
+
 on:
   schedule:
-    - cron: '0 */8 * * *' # هر 8 ساعت اجرا میشه
-  workflow_dispatch: # می‌تونی دستی هم اجراش کنی
+    - cron: '0 */8 * * *'  # هر 8 ساعت اجرا میشه
+  workflow_dispatch:
 
 jobs:
-  build:
+  convert:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
 
-    - name: Install Requests
-      run: pip install requests
-
-    - name: Run Convert Script
-      run: python convert_sub.py
-
-    - name: Commit and Push clash_sub.yaml
+    - name: Install dependencies
       run: |
-        git config --local user.name "github-actions"
-        git config --local user.email "github-actions@github.com"
-        git add clash_sub.yaml
-        git commit -m "Auto update clash sub" || echo "No changes to commit"
+        python -m pip install --upgrade pip
+        pip install pyyaml requests
+
+    - name: Run conversion
+      run: |
+        # ایجاد اسکریپت کانورت
+        echo "
+import requests, yaml, base64
+
+# لینک‌های ساب شما
+links = [
+    'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/speed_passed.txt',
+    'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/tested/ping_passed.txt',
+    'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/all/mixed.txt',
+    'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/AR14N24B/mixed_base64.txt',
+    'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/main/sub/xsfilternet/mixed_base64.txt'
+]
+
+final_content = []
+
+for url in links:
+    r = requests.get(url)
+    if r.status_code == 200:
+        text = r.text.strip()
+        # تشخیص base64 یا معمولی
+        try:
+            decoded = base64.b64decode(text).decode('utf-8')
+            final_content.append(decoded)
+        except:
+            final_content.append(text)
+
+# ذخیره نهایی
+with open('subs_converted.yaml', 'w', encoding='utf-8') as f:
+    yaml.safe_dump({'proxies': final_content}, f, allow_unicode=True)
+
+print('Conversion done!')
+" > convert_sub.py
+
+        # اجرای کانورت
+        python convert_sub.py
+
+    - name: Commit & push converted file
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add subs_converted.yaml
+        git commit -m "Auto update converted subs"
         git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
